@@ -2,6 +2,7 @@
 # outputs distances and conjunction periods
 
 # TODO === fix treatment of dates to speed up script
+# TODO === cleanup and make consistent with angle script
 
 import numpy as np
 import pykep as pk
@@ -15,7 +16,7 @@ import datetime as dt
 target_pl = 'Mars'
 
 # reference timeframe
-initial_epoch = '2018-01-01'
+initial_epoch = '2026-01-01'
 final_epoch = '2035-01-01'
 
 
@@ -62,7 +63,7 @@ def range_data(screen_output=False, steps=1):
 
         earth_dist = (xd ** 2 + yd ** 2 + zd ** 2) ** 0.5
 
-        earth_dist = np.linalg.norm(earth_dist)
+        # earth_dist = np.linalg.norm(earth_dist)
         earth_dist /= pk.AU
 
         # get dates in correct format
@@ -93,17 +94,14 @@ def range_data(screen_output=False, steps=1):
 
 def plot_range():
 
-
-    x , epochs, y1, y2 = range_data(False)
+    x , epochs, y1, y2 = range_data(True)
 
     x = [dt.datetime.strptime(d, '%Y-%m-%d').date() for d in x]
 
-    print(x)
-
     plt.gca().xaxis.set_major_formatter(dlt.DateFormatter('%Y-%m-%d'))
     plt.gca().xaxis.set_major_locator(dlt.YearLocator())
-    plt.plot(x, y2, linewidth = 2.5,linestyle='-', label = target_pl+'-Earth distance')
-    plt.plot(x, y1, linewidth=2.5,linestyle='-', label = 'Sun-'+target_pl+' distance')
+    plt.plot(x, y2, linewidth = 1.5,linestyle=':', label = target_pl+'-Earth', color = 'dodgerblue')
+    plt.plot(x, y1, linewidth=1.5,linestyle='-', label = 'Sun-'+target_pl, color = 'orangered')
     plt.xticks(rotation = 90)
 
     # tick parameters
@@ -129,12 +127,3 @@ def plot_range():
 
 # range_data(False)
 plot_range()
-
-
-
-
-
-
-
-
-
