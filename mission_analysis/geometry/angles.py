@@ -2,6 +2,7 @@
 # outputs distances and conjunction periods
 
 # TODO === fix treatment of dates to speed up script
+# TODO === add conjunction finding function
 
 import numpy as np
 import pykep as pk
