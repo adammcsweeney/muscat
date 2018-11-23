@@ -1,2 +1,2 @@
 # muscat
-Mission and SpaceCraft Analysis Tool
+Mission plUs SpaceCraft Analysis Tool
