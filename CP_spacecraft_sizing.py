@@ -1,16 +1,13 @@
-
-# IMPORTS
-
 from itertools import permutations
 
 
-# INPUTS
+# 1. Inputs
 
 SystemMargin = 0.3
 
 PayloadMass = [300,200]
 
-# DEFINITION OF FUNCTIONS
+# 2. Functions
 
 # find unique permutations (used for staging)
 def unique_permutations(iterable, r=None):
@@ -38,7 +35,7 @@ def OptionStageProfiles(Option):
     return StagingProfile
 
 
-# DEFINITION OF DELTA-V BUDGET
+# 3. Delta-V budget
 
 DeltaV = [
     # E-M Cruise
@@ -73,13 +70,13 @@ RCS_DeltaV = [
     # E Approach
     1.88]
 
-# DEFINITION OF STAGES
+
+# 4. Definition of stages
 
 # class definitions of different types of stage
 # these stages are combined to form different mission staging options
 
-# Mission Module (MM)
-# The core stage, mandatory for any mission option
+# Mission Module (MM) - The mission stage, the minimum for any mission option
 
 class MissionModule(object):
 
@@ -115,9 +112,7 @@ class MissionModule(object):
     def WetMass(self):
         return self.dry_mass + self.propellant_mass
 
-
-# Propulsion Module (PM)
-# additional pure propulsion stage(s) added to the Mission Module
+# Propulsion Module (PM) - additional pure CP kick stage(s) added to the Mission Module
 
 class PropulsionModule(object):
 
@@ -143,26 +138,18 @@ class PropulsionModule(object):
         # STAGE MASS TOTALS
 
     def DryMass(self):
-        DryMass = 500
+        DryMass = 512
         return DryMass
 
     def PropellantMass(self):
-        PropellantMass = 500
+        PropellantMass = 505
         return PropellantMass
 
     def WetMass(self):
         return self.dry_mass + self.propellant_mass
 
 
-# Composite class
-
-class Composite(object):
-
-    def __init__(self, ModuleList):
-        self.name = "Option ID"
-
-
-# DEFINE MISSION CONFIGURATIONS OPTIONS
+# 5. Definition of mission staging configuration options
 
 Option_1 = [MissionModule()]
 Option_2 = [MissionModule(), PropulsionModule(PM_index=1)]
@@ -172,9 +159,26 @@ Option_3 = [MissionModule(), PropulsionModule(PM_index=2), PropulsionModule(PM_i
 
 Options = [Option_1, Option_2, Option_3]
 
-
+# TEST
 for option in Options:
-    print(OptionStageProfiles(option))
+    print("NEW CASE")
+    MassList = [0] * len(DeltaV)
+    for profile in OptionStageProfiles(option):
+        index = 0
+        MassList = [0] * len(DeltaV)
+        for step in profile:
+            if step:
+                MassList[index] = option[-1].wet_mass
+            index += 1
+        print(MassList)
+
+
+
+    # StagingMassProfile = [0] * len(DeltaV)
+    #
+    # print(StagingMassProfile)
+
+
 
 
 
