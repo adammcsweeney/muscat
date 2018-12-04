@@ -1,40 +1,33 @@
 # create porkchop plots for interplanetary mission analysis
-# note: currently finds lowest type 2 trajectory
+# note: currently finds lowest C3 type 2 trajectory
+# credit to DarioIzzo: https://gist.github.com/darioizzo/10643082
+
+# TODO ==== create separate porkchop utilities
+# 1. Mission independent (C3 departure
+# 2. Mission dependent (considering LV, capture orbit, Isp, Mass fractions etc.)
+
 
 # import statement
-import time
 import numpy as np
 from scipy import array
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdt
 import pykep as pk
 
-# 1. Inputs
+# plt.xkcd()
 
-StartTime = time.time()
-
-# direct transfer from Planet_i to Planet_f
-
-Planet_i = pk.planet.jpl_lp('earth')
-Planet_f = pk.planet.jpl_lp('mars')
-
-# input epoch range
-
-Epoch_i = 9700
-Epoch_f = 9900
-
-# input Time of flights to be considered
-
-# note: ToF_min minimum value = 1
-ToF_min = 1
-ToF_max = 600
-
-# Show the pork?
-ShowPork = False
-
+# Mission independent porkchop plot
 
 class Porkchop(object):
 
-    def __init__(self):
+    def __init__(self,
+                 Planet_i = pk.planet.jpl_lp('earth'),
+                 Planet_f = pk.planet.jpl_lp('mars'),
+                 Epoch_i = 9700,
+                 Epoch_f = 9900,
+                 ToF_min = 1,
+                 ToF_max = 600,
+                 ShowPork = False):
 
         # planets
         self.Planet_i = Planet_i
@@ -62,11 +55,17 @@ class Porkchop(object):
         # data container list
         data = list()
 
+        # TODO ==== check and delete
+        data_tof = list()
+
         # loop through each departure epoch in range
         for start in start_epochs:
 
             # create an empty list for each row
             row = list()
+
+            # TODO ==== check and delete
+            row_tof = list()
 
             # loop through each transfer duration
             for T in duration:
@@ -98,8 +97,14 @@ class Porkchop(object):
                 # add DV value to row list
                 row.append(DV)
 
+                # TODO ==== check and delete
+                row_tof.append(T)
+
             # add row of DV values for given ToF values to data container list
             data.append(row)
+
+            # TODO ==== check and delete
+            data_tof.append(row_tof)
 
         # Next, extract the best solution found and the relative epochs
 
@@ -119,7 +124,7 @@ class Porkchop(object):
         # extract the best solution from data grid (i.e. for evaluating the DV, ToF, and departure Epoch
         best = data[i_idx][j_idx]
 
-        return start_epochs, duration, data, best, i_idx, j_idx
+        return start_epochs, duration, data, best, i_idx, j_idx, data_tof
 
     def report(self, data):
 
@@ -139,19 +144,60 @@ class Porkchop(object):
         print(f"{'Arrival epoch: '}\t{pk.epoch(starts[i]+ToFs[j])}")
         print(f"{'Arrival epoch (MJD2000): '}\t{str(starts[i]+ToFs[j])}")
 
-    def get_plot(self, start_epochs, duration, data):
+    def get_plot(self, start_epochs, duration, data, data_tof):
 
         # Data collection for Plots
+
+        # line to convert epoch into correct format for plotting on x-axis
+        # hacky fix; add 730120 to make compatible with matplotlib date treatment
+        # TODO ==== makes this better
+        departure_epochs = [x + 730120 for x in start_epochs]
 
         # create new list of ToFs
         durations = [ToF + 0 for ToF in duration]
 
         # create grid for ToF and departure epoch data
 
-        durations_pl, start_epochs_pl = np.meshgrid(durations, start_epochs)
+        durations_pl, start_epochs_pl = np.meshgrid(durations, departure_epochs)
+
+        # durations_pl, start_epochs_pl = np.meshgrid(durations, new_test)
 
         # create array for arrival epochs
-        end_epochs_pl = [ToF + start for ToF, start in zip(durations_pl, start_epochs)]
+        end_epochs_pl = [ToF + start for ToF, start in zip(durations_pl, departure_epochs)]
+
+        # print(pk.epoch(start_epochs_pl[0][0]))
+
+        # add x and y axis labels
+        plt.xlabel("Launch epoch")
+        plt.ylabel("Arrival epoch")
+
+        # tick parameters
+        plt.minorticks_on()
+        plt.tick_params(direction='in', which='both', labelsize = 'small')
+
+        # grid parameters
+        plt.grid(color='lightgrey', linestyle=':', linewidth=0.5)
+
+        # plot axis limits
+        plt.xlim()
+        # hacky fix; add 730120 to make compatible with matplotlib date treatment
+        # TODO === make this better
+        plt.ylim(self.Epoch_i + 250 + 730120, self.Epoch_f + self.ToF_max + 730120)
+
+        # set axis to date format
+        # x axis
+        # note: edit this line to adjust date format
+        plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%Y-%b-%d'))
+        # plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%Y'))
+        plt.gca().xaxis.set_major_locator(mdt.AutoDateLocator())
+        # y axis
+        # note: edit this line to adjust date format
+        plt.gca().yaxis.set_major_formatter(mdt.DateFormatter('%Y-%b-%d'))
+        # plt.gca().yaxis.set_major_formatter(mdt.DateFormatter('%Y'))
+        plt.gca().yaxis.set_major_locator(mdt.AutoDateLocator())
+
+
+        # TODO ==== add color bar!
 
         # filled contour plot
         if self.ShowPork:
@@ -159,87 +205,90 @@ class Porkchop(object):
                 start_epochs_pl,
                 end_epochs_pl,
                 array(data),
-                levels=list(np.linspace(0, 50, 21)),
-                cmap='OrRd',
+                levels=list(np.linspace(0, 50, 11)),
+                cmap='jet',
             )
             # line contour plot
             fig = plt.contour(
                 start_epochs_pl,
                 end_epochs_pl,
                 array(data),
-                levels=list(np.linspace(0, 50, 21)),
+                levels=list(np.linspace(0, 50, 11)),
                 colors='k',
                 # cmap='jet',
-                linewidths=.5,
-                linestyles=':'
+                linewidths=.9,
+                linestyles='-'
             )
+            # labels on contour lines
+            plt.clabel(fig,
+                       colors='black',
+                       fontsize=4,
+                       inline=True,
+                       inline_spacing=1,
+                       fmt='%1.1f')
         else:
             # line contour plot
             fig = plt.contour(
                 start_epochs_pl,
                 end_epochs_pl,
                 array(data),
-                levels=list(np.linspace(0, 50, 21)),
+                levels=list(np.linspace(0, 30, 21)),
                 # colors='k',
                 cmap='jet',
                 linewidths=.5,
-                linestyles='-'
+                linestyles=':'
             )
+            # labels on contour lines
+            plt.clabel(fig,
+                       colors='black',
+                       fontsize=4,
+                       inline=True,
+                       inline_spacing=1,
+                       fmt='%1.1f')
+
+        # add lines of constant ToF
+        fig = plt.contour(
+            start_epochs_pl,
+            end_epochs_pl,
+            array(data_tof),
+            levels=list(np.linspace(0, 1000, 21)),
+            colors='k',
+            # cmap='jet',
+            linewidths=.5,
+            linestyles=':'
+        )
 
         # labels on contour lines
-        plt.clabel(fig,
-                   colors='black',
+        clabels = plt.clabel(fig,
+                   colors='k',
                    fontsize=4,
                    inline=True,
-                   inline_spacing=1,
+                   inline_spacing=3,
                    fmt='%1.0f')
 
-        # add constant ToF lines
-        for ToF in np.arange(self.ToF_min, self.ToF_max+1, 50):
-            x = []
-            y = []
-            for epoch in start_epochs:
-                x.append(epoch)
-                y.append(epoch + ToF)
-            plt.plot(x, y,
-                     linewidth=0.5,
-                     color='k',
-                     linestyle=':')
 
-        # add x and y axis labels
-        plt.xlabel("Launch epoch (MJD2000)")
-        plt.ylabel("Arrival epoch (MJD2000)")
-
-        # tick parameters
-        plt.minorticks_on()
-        plt.tick_params(direction='in', which='both')
-
-        # grid parameters
-        plt.grid(color='lightgrey', linestyle=':', linewidth=0.5)
-
-        # plot axis limits
-        plt.xlim()
-        # plt.ylim(self.Epoch_f, self.Epoch_i  + self.ToF_max)
 
         plt.tight_layout()
 
+        plt.gcf().autofmt_xdate()
+
+
         plt.show()
 
-
-# test run
-
-# 1. create porkchop data from inputs
-
-# call porkchop class
-porkchop = Porkchop()
-
-# data generation
-data = porkchop.get_data()
-
-# 2. Report on porkchop data
-porkchop.report(data)
-
-# 3. Produce porkchop plot
-# print(len(data[0]))
-# print(len(data[1]))
-porkchop.get_plot(data[0], data[1], data[2])
+# # test run
+#
+# # 1. create porkchop data from inputs
+#
+# # call porkchop class
+# porkchop = Porkchop()
+#
+# # data generation
+# data = porkchop.get_data()
+#
+# # 2. Report on porkchop data
+# porkchop.report(data)
+#
+# # 3. Produce porkchop plot
+# # print(len(data[0]))
+# # print(len(data[1]))
+# porkchop.get_plot(data[0], data[1], data[2], data[6])
